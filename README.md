@@ -7,6 +7,73 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+
+A simple Laravel e-commerce test project with:
+
+Customer login (JWT + Session)
+
+Admin panel to add/manage products
+
+Shopping cart system
+
+Checkout
+
+Razorpay payment integration
+
+Order placement & order history
+
+Beginner-friendly ✅
+Easy to understand ✅
+Perfect for practice ✅
+
+✅ Features
+Customer Side
+
+Register & login
+
+Browse products
+
+Add to cart
+
+Increase/decrease quantity
+
+Remove cart items
+
+Checkout page
+
+Place order
+
+Pay using Razorpay popup
+
+Payment verification
+
+View order history
+
+Admin Side
+
+Admin login
+
+Add new products
+
+Edit products
+
+Delete products
+
+View all products
+
+✅ Requirements
+
+PHP 8+
+
+Composer
+
+MySQL
+
+Laravel 10
+
+Node (optional)
+
+Razorpay test credentials
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
