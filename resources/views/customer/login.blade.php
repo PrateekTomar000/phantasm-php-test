@@ -39,36 +39,55 @@
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <script>
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
+$('#loginForm').on('submit', function(e) {
     e.preventDefault();
 
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+    let email = $('#email').val();
+    let password = $('#password').val();
 
-    try {
-        const res = await fetch('/api/customer/login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email, password})
-        });
+    $.ajax({
+        url: '/api/customer/login',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ email: email, password: password }),
+        success: function(response) {
+            if (response.success) {
+                // Save JWT token in localStorage
+                localStorage.setItem('customerToken', response.token);
 
-        const data = await res.json();
-
-        if (res.ok) {
-            localStorage.setItem('customerToken', data.token);
-            document.getElementById('alertBox').innerHTML =
-                '<div class="alert alert-success">Login successful!</div>';
-            window.location.href = '/customer/dashboard';
-        } else {
-            document.getElementById('alertBox').innerHTML =
-                `<div class="alert alert-danger">${data.error || 'Login failed'}</div>`;
+                // Send customer + token to Laravel session
+                $.ajax({
+                    url: '/session/sync',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        token: response.token,
+                        id: response.customer.id,
+                        name: response.customer.name,
+                        email: response.customer.email,
+                        latitude: response.customer.latitude,
+                        longitude: response.customer.longitude
+                    },
+                    success: function(res) {
+                        window.location.href = '/customer/dashboard';
+                    },
+                    error: function() {
+                        alert('Session sync failed.');
+                    }
+                });
+            } else {
+                $('#alertBox').html('<div class="alert alert-danger">' + (response.error || 'Login failed') + '</div>');
+            }
+        },
+        error: function() {
+            $('#alertBox').html('<div class="alert alert-danger">Server error</div>');
         }
-    } catch (err) {
-        document.getElementById('alertBox').innerHTML =
-            '<div class="alert alert-danger">Server error</div>';
-    }
+    });
 });
 </script>
+
 </body>
 </html>

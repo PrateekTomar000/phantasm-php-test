@@ -32,26 +32,33 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function login(Request $request)
-    {
-        $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required',
-        ]);
+   public function login(Request $request)
+{
+    $request->validate([
+        'email'    => 'required|email',
+        'password' => 'required',
+    ]);
 
-        // This attempts using the api guard → customers provider
-        $token = auth('api')->attempt($request->only('email', 'password'));
+    // Attempt JWT login
+    $token = auth('api')->attempt($request->only('email', 'password'));
 
-        if (!$token) {
-            return response()->json(['error' => 'Invalid credentials'], 401);
-        }
-
-        return response()->json([
-            'success'  => true,
-            'token'    => $token,
-            'customer' => auth('api')->user()
-        ]);
+    if (!$token) {
+        return response()->json(['error' => 'Invalid credentials'], 401);
     }
+
+    $customer = auth('api')->user();
+
+    // Create Laravel session manually for web-based use
+    auth()->login($customer); // This uses the default 'web' guard
+    session(key: ['jwt_token' => $token]); // Save token in session
+
+    return response()->json([
+        'success'  => true,
+        'message'  => 'Login successful',
+        'customer' => $customer,
+        'token'    => $token,
+    ]);
+}
 
     public function profile()
     {
@@ -73,4 +80,26 @@ class CustomerController extends Controller
             'customer' => $customer
         ]);
     }
+
+    public function logout(Request $request)
+{
+    // Logout from session if exists
+    auth()->logout();
+
+    // Forget any saved JWT token
+    session()->forget('jwt_token');
+
+    // Invalidate JWT if exists
+    try {
+        $token = session('jwt_token');
+        if ($token) {
+            auth('api')->setToken($token)->invalidate();
+        }
+    } catch (\Exception $e) {
+        // ignore expired/invalid token
+    }
+
+    return response()->json(['success' => true, 'message' => 'Logged out successfully']);
+}
+
 }

@@ -40,6 +40,10 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'customer' => [
+        'driver' => 'session',
+        'provider' => 'customers',
+        ],
         'api' => [
         'driver' => 'jwt',   // change from token/session to jwt
         'provider' => 'customers',  // the provider for your customer model

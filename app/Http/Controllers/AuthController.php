@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Customer;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -43,6 +44,26 @@ class AuthController extends Controller
         }
 
         return back()->with('error','Invalid credentials');
+    }
+    public function syncSession(Request $request)
+    {
+        // Store customer data in Laravel session
+        session([
+            'customer_id' => $request->id,
+            'customer_name' => $request->name,
+            'customer_email' => $request->email,
+            'customer_latitude' => $request->latitude,
+            'customer_longitude' => $request->longitude,
+            'jwt_token' => $request->token,
+        ]);
+
+        // Optionally log in the customer (for Auth::check() and cart)
+        $customer = Customer::find($request->id);
+        if ($customer) {
+            auth('customer')->login($customer);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Session synced successfully']);
     }
 
     public function dashboard()
@@ -104,4 +125,7 @@ class AuthController extends Controller
     {
         return response()->json(User::paginate(10));
     }
+
+   
+
 }

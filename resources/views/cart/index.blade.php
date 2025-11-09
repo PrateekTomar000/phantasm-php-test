@@ -28,7 +28,7 @@
                     <td>{{ $item->product->name }}</td>
                     <td>₹{{ $item->price }}</td>
                     <td>
-                        <form action="{{ route('cart.update', $item) }}" method="POST" class="d-flex align-items-center">
+                        <form action="{{ route('cart.update1', $item) }}" method="POST" class="d-flex align-items-center">
                             @csrf
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="decreaseQty({{ $item->id }})">-</button>
                             <input type="text" name="quantity" id="qty-{{ $item->id }}" value="{{ $item->quantity }}" class="form-control text-center mx-1" style="width:50px;">

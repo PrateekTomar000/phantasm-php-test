@@ -11,133 +11,229 @@
 
         <div>
             <!-- Cart Button -->
-            <button class="btn btn-primary position-relative" data-bs-toggle="modal" data-bs-target="#cartModal" onclick="loadCart()">
+            <a href="{{ route('cart.index') }}" class="btn btn-primary position-relative">
                 Cart
                 <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                     0
                 </span>
-            </button>
+            </a>
 
             <!-- Logout -->
-            <form method="POST" action="{{ route('logout') }}" class="d-inline">
-                @csrf
-                <button class="btn btn-danger">Logout</button>
-            </form>
+            <button id="logout-btn" class="btn btn-danger">Logout</button>
         </div>
     </div>
 
     <!-- Welcome -->
     <div id="welcomeBox" class="alert alert-primary">Loading customer info...</div>
 
+    <!-- Notification -->
+    <div id="notification" class="alert alert-success d-none position-fixed top-0 end-0 m-3" style="z-index:9999;"></div>
+
     <!-- PRODUCTS SECTION -->
     <h4 class="mt-5 mb-3">Products</h4>
     <div id="productContainer" class="row g-4"></div>
 
 </div>
-
-<!-- CART MODAL -->
-<div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="cartModalLabel">My Cart</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body" id="cartContainer">
-        Loading cart...
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <a href="{{ route('cart.index') }}" class="btn btn-primary">Go to Cart Page</a>
-      </div>
-    </div>
-  </div>
-</div>
-
 @endsection
 
 @section('scripts')
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', async function() {
+$(document).ready(function() {
 
     // Load profile
-    async function loadProfile() {
-        const res = await fetch("/api/customer/profile", {
-            headers: { "Authorization": "Bearer " + localStorage.getItem("customerToken") }
+    function loadProfile() {
+        $.ajax({
+            url: '/api/customer/profile',
+            headers: { "Authorization": "Bearer " + localStorage.getItem("customerToken") },
+            method: 'GET',
+            success: function(data) {
+                $('#welcomeBox').html(`Welcome <strong>${data.name}</strong> (${data.email})`);
+            }
         });
-        const data = await res.json();
-        document.getElementById("welcomeBox").innerHTML = `Welcome <strong>${data.name}</strong> (${data.email})`;
+    }
+
+    // Load cart session
+    function loadCartSession() {
+        return $.ajax({
+            url: '/cart/session',
+            method: 'GET'
+        });
     }
 
     // Load products
-    async function loadProducts() {
-        const res = await fetch("/customer/products/data");
-        const products = await res.json();
+    function loadProducts() {
+        $.when($.getJSON('/customer/products/data'), loadCartSession())
+        .done(function(productsRes, cartSessionRes){
+            let products = productsRes[0];
+            let cartSession = cartSessionRes[0];
+            let html = '';
 
-        let html = '';
-        products.forEach(p => {
-            html += `
-                <div class="col-md-4">
-                    <div class="card shadow-sm">
-                        ${p.image ? `<img src="/storage/${p.image}" class="card-img-top">` : ""}
-                        <div class="card-body">
-                            <h5 class="card-title">${p.name}</h5>
-                            <p class="text-muted">${p.sku}</p>
-                            <p>${p.description ?? ""}</p>
-                            <p class="fw-bold">₹${p.price}</p>
-                            <input type="number" min="1" value="1" id="qty-${p.id}" class="form-control mb-2">
-                            <button class="btn btn-primary w-100" onclick="addToCart(${p.id})">Add to Cart</button>
+            $.each(products, function(i, p){
+                let inCart = cartSession[p.id] || 0;
+                let cartBtnHtml = '';
+
+                if(inCart > 0){
+                    cartBtnHtml = `
+                        <div class="input-group">
+                            <button class="btn btn-danger minus-btn" data-id="${p.id}">-</button>
+                            <input type="text" class="form-control text-center cartQty" data-id="${p.id}" value="${inCart}" readonly>
+                            <button class="btn btn-success plus-btn" data-id="${p.id}">+</button>
+                        </div>`;
+                } else {
+                    cartBtnHtml = `
+                        <input type="number" min="1" value="1" class="form-control qty-input mb-2" data-id="${p.id}">
+                        <button class="btn btn-primary w-100 add-btn" data-id="${p.id}">Add to Cart</button>`;
+                }
+
+                html += `
+                    <div class="col-md-4">
+                        <div class="card shadow-sm">
+                            ${p.image ? `<img src="/storage/${p.image}" class="card-img-top">` : ""}
+                            <div class="card-body">
+                                <h5 class="card-title">${p.name}</h5>
+                                <p class="text-muted">${p.sku}</p>
+                                <p>${p.description || ""}</p>
+                                <p class="fw-bold">₹${p.price}</p>
+                                <div id="cartBtn-${p.id}">${cartBtnHtml}</div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            `;
-        });
+                    </div>`;
+            });
 
-        document.getElementById("productContainer").innerHTML = html;
+            $('#productContainer').html(html);
+        });
     }
 
-    // Add product to cart
-    window.addToCart = async function(productId) {
-        const quantity = document.getElementById(`qty-${productId}`).value;
+    // Show notification
+    function showNotification(msg){
+        let notif = $('#notification');
+        notif.text(msg).removeClass('d-none');
+        setTimeout(() => notif.addClass('d-none'), 2000);
+    }
 
-        const res = await fetch(`/cart/add/${productId}`, {
+    // Add to cart
+    $(document).on('click', '.add-btn', function(){
+        let productId = $(this).data('id');
+        let qty = parseInt($(`.qty-input[data-id=${productId}]`).val());
+
+        $.ajax({
+            url: `/cart/add/${productId}`,
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ quantity: quantity })
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+            contentType: 'application/json',
+            data: JSON.stringify({ quantity: qty }),
+            success: function(data){
+                if(data.success){
+                    $(`#cartBtn-${productId}`).html(`
+                        <div class="input-group">
+                            <button class="btn btn-danger minus-btn" data-id="${productId}">-</button>
+                            <input type="text" class="form-control text-center cartQty" data-id="${productId}" value="${data.quantity}" readonly>
+                            <button class="btn btn-success plus-btn" data-id="${productId}">+</button>
+                        </div>
+                    `);
+                    showNotification('Product added to cart!');
+                    updateCartCount();
+                }
+            }
         });
+    });
 
-        const data = await res.json();
-        if (data.success) {
-            alert("Added to cart!");
-            loadCartCount();
-        }
+    // Minus button
+    $(document).on('click', '.minus-btn', function(){
+        let productId = $(this).data('id');
+        let qtyInput = $(`.cartQty[data-id=${productId}]`);
+        let newQty = parseInt(qtyInput.val()) - 1;
+        if(newQty < 1) return;
+
+        $.ajax({
+            url: `/cart/update/${productId}`,
+            method: 'POST',
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+            contentType: 'application/json',
+            data: JSON.stringify({ quantity: newQty }),
+            success: function(data){
+                if(data.success){
+                    qtyInput.val(newQty);
+                    updateCartCount();
+                }
+            }
+        });
+    });
+
+    // Plus button
+    $(document).on('click', '.plus-btn', function(){
+        let productId = $(this).data('id');
+        let qtyInput = $(`.cartQty[data-id=${productId}]`);
+        let newQty = parseInt(qtyInput.val()) + 1;
+
+        $.ajax({
+            url: `/cart/update/${productId}`,
+            method: 'POST',
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+            contentType: 'application/json',
+            data: JSON.stringify({ quantity: newQty }),
+            success: function(data){
+                if(data.success){
+                    qtyInput.val(newQty);
+                    updateCartCount();
+                }
+            }
+        });
+    });
+
+    // Update cart badge
+    function updateCartCount(){
+        $.getJSON('/cart/count', function(data){
+            $('#cartCount').text(data.count);
+        });
     }
 
-    // Load cart content into modal
-    window.loadCart = async function() {
-        const res = await fetch("/cart");
-        const html = await res.text(); // Blade partial
-        document.getElementById("cartContainer").innerHTML = html;
-        loadCartCount();
-    }
-
-    // Load cart count
-    async function loadCartCount() {
-        const res = await fetch("/cart");
-        const html = await res.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const rows = doc.querySelectorAll('tbody tr').length;
-        document.getElementById('cartCount').innerText = rows;
-    }
-
+    // Initial load
     loadProfile();
     loadProducts();
-    loadCartCount();
+    updateCartCount();
 
 });
 </script>
+<script>
+$(document).ready(function() {
+    var token = localStorage.getItem('customerToken');
+    if (!token) {
+        window.location.href = 'login';
+    }
+
+    // Recheck whenever user navigates back
+    $(window).on('pageshow', function(event) {
+        if (event.originalEvent.persisted || performance.getEntriesByType("navigation")[0].type === 'back_forward') {
+            if (!localStorage.getItem('customerToken')) {
+                window.location.href = 'login';
+            }
+        }
+    });
+});
+
+$(document).on('click', '#logout-btn', function(e) {
+    e.preventDefault();
+    const token = localStorage.getItem('customerToken');
+
+    $.ajax({
+        url: '/api/customer/logout',
+        type: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + token
+        },
+        success: function() {
+            localStorage.removeItem('customerToken');
+            window.location.href = 'login';
+        },
+        error: function() {
+            localStorage.removeItem('customerToken');
+            window.location.href = 'login';
+        }
+    });
+});
+
+</script>
+
 @endsection

@@ -11,6 +11,7 @@ Route::post('customer/register', [CustomerController::class, 'register']);
 Route::post('customer/login', [CustomerController::class, 'login']);
 Route::get('customer/profile', [CustomerController::class, 'profile'])->middleware('auth:api');
 Route::put('customer/address', [CustomerController::class, 'updateAddress'])->middleware('auth:api');
+Route::post('/customer/logout', [CustomerController::class, 'logout'])->name('customer.logout');
 
 // Admin product routes – only JWT auth now
 Route::prefix('admin')->middleware('auth:api')->group(function () {
@@ -22,3 +23,4 @@ Route::prefix('admin')->middleware('auth:api')->group(function () {
 // Brand & Category API (JWT protected)
 Route::middleware('auth:api')->get('/brands', [BrandController::class, 'getAll']);
 Route::middleware('auth:api')->get('/categories', [CategoryController::class, 'getAll']);
+
