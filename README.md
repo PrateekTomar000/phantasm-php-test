@@ -22,11 +22,7 @@ Razorpay payment integration
 
 Order placement & order history
 
-Beginner-friendly ✅
-Easy to understand ✅
-Perfect for practice ✅
-
-✅ Features
+ Features
 Customer Side
 
 Register & login
@@ -61,7 +57,7 @@ Delete products
 
 View all products
 
-✅ Requirements
+Requirements
 
 PHP 8+
 
@@ -71,7 +67,6 @@ MySQL
 
 Laravel 10
 
-Node (optional)
 
 Razorpay test credentials
 ## About Laravel
